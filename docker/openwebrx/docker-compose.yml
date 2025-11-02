@@ -1,0 +1,42 @@
+services:
+  openwebrx:
+    image: 'slechev/openwebrxplus-softmbe:latest'
+    container_name: openwebrx_docker
+    restart: unless-stopped
+    ports:
+      - '8073:8073'
+      - '5678:5678'
+    environment:
+      TZ: Europe/Berlin
+      FORWARD_LOCALPORT_1234: 5678
+      # OPENWEBRX_ADMIN_USER: admin
+      # OPENWEBRX_ADMIN_PASSWORD: 123465
+      HEALTHCHECK_USB_1df7_3000: 1 # SDRPlay Healthcheck
+      HEALTHCHECK_USB_0bda_2838: 1 # NeSDR Smart Healthcheck
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    volumes:
+      - ./etc:/etc/openwebrx
+      - ./var:/var/lib/openwebrx
+      - ./plugins:/usr/lib/python3/dist-packages/htdocs/plugins
+
+# if you want your container to restart automatically if the HEALTHCHECK fails
+# (see here: https://stackoverflow.com/a/48538213/420585)
+  openwebrx_autoheal:
+    restart: unless-stopped
+    container_name: openwebrx_docker_autoheal
+    image: willfarrell/autoheal
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  restarter:
+    image: docker:cli
+    container_name: openwebrx_docker_restarter
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./restarter:/restarter
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["chmod +x /restarter/script.sh && /restarter/script.sh"]
+    restart: unless-stopped
